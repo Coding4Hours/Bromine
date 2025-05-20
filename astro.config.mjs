@@ -6,9 +6,11 @@ import icons from "astro-icons";
 
 import netlify from "@astrojs/netlify";
 
+import playformCompress from "@playform/compress";
+
 // https://astro.build/config
 export default defineConfig({
-	integrations: [icons()],
-	vite: { plugins: [tailwindcss()] },
-	adapter: netlify(),
+    integrations: [icons(), playformCompress()],
+    vite: { plugins: [tailwindcss()] },
+    adapter: netlify(),
 });
