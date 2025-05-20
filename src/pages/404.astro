@@ -1,0 +1,33 @@
+---
+---
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1.0"
+    />
+    <title>Bromine</title>
+    <base href="/" />
+    <link rel="shortcut icon" content="favicon.ico" />
+    <link rel="stylesheet" href="index.css" />
+  </head>
+
+  <body>
+    <div class="logo-wrapper left-margin">
+      <h1>Bromine has skill issue</h1>
+    </div>
+    <div class="desc left-margin">
+      <p>The server could not route your request.</p>
+      <p id="uv-error"></p>
+      <code id="uv-error-code"></code>
+      <button id="uv-register-sw" value="Register service worker">
+        Register ServiceWorker
+      </button>
+    </div>
+<script is:inline src="/uv/uv.bundle.js"></script>
+    <script is:inline src="/uv/uv.config.js"></script>
+<script is:inline src="/register-sw.js"></script>
+<script is:inline src="/error.js"></script>
+  </body>
+</html>

@@ -1,17 +1,42 @@
 ---
-import Omnibar from "@/components/Omnibar.astro";
+import "../styles/global.css";
+import { Icon } from "astro-icon/components";
 ---
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1.0"
+    />
+    <title>A really shitty proxy called bromine</title>
+    <link rel="stylesheet" href="/index.css" />
+<script is:inline src="/baremux/index.js" defer></script>
+<script  is:inline src="/epoxy/index.js" defer></script>
+<script  is:inline src="/uv/uv.bundle.js" defer></script>
+<script is:inline src="/uv/uv.config.js" defer></script>
+<script is:inline src="/register-sw.js" defer></script>
+<script  is:inline src="/search.js" defer></script>
+<script is:inline src="/index.js" defer></script>
+  </head>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
   <body>
-    <Omnibar/>
-		<h1>Astro</h1>
-	</body>
+    <h1 class="title">bromine</h1>
+    <form id="uv-form" class="flex-center">
+      <input
+        id="uv-search-engine"
+        value="https://www.duckduckgo.com/search?q=%s"
+        type="hidden"
+      />
+      <input id="uv-address" type="text" placeholder="Search the web freely" />
+    </form>
+    <div class="desc left-margin">
+      <p id="uv-error"></p>
+      <pre id="uv-error-code"></pre>
+    </div>
+    <div id="frames">
+      <iframe style="display: none;" id="uv-frame"></iframe>
+      <Icon name="tabler:arrow-narrow-right"/>
+    </div>
+  </body>
 </html>
