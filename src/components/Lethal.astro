@@ -1,0 +1,25 @@
+---
+---
+<script type="module">
+      import { setTransport, setWisp, makeURL, getProxied } from './lethal.mjs'
+      
+      const form = document.getElementById('uv-form'); 
+        const frame = document.getElementById('uv-frame');
+        
+		// let wispUrl = (location.protocol === "https:" ? "wss" : "ws") + "://" + location.host + "/wisp/";
+     const address = document.getElementById("uv-address");
+
+         if (navigator.userAgent.indexOf("Firefox") > 0) setTransport('libcurl');
+         else setTransport("epoxy");
+
+setWisp("wss://wisp.rhw.one/");
+       // setWisp('wss://wisp.mercurywork.shop/wisp/');
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+                  frame.src = await getProxied(makeURL(address.value));
+
+
+        })
+    </script>
+

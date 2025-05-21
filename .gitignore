@@ -4,6 +4,8 @@ node_modules
 dist/
 # generated types
 .astro/
+.netlify
+.vscode
 
 # dependencies
 node_modules/

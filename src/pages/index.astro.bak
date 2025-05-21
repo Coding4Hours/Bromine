@@ -1,17 +1,58 @@
 ---
+import Layout from "../Layout.astro";
 import Omnibar from "@/components/Omnibar.astro";
+import Lethal from "@/components/Lethal.astro";
+import { Icon } from "astro-icon/components";
 ---
+<Layout title="bromine">
+<script is:inline defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <Omnibar/>
+  <nav
+      id="controls"
+      class="fixed left-0 right-0 z-10 flex h-[var(--spacing-fluid-xl)] items-center justify-center gap-[var(--spacing-fluid-sm)] px-[var(--spacing-fluid-sm)]"
+    >
+      <button
+        aria-label="Go back in history"
+        @click="$refs.frame.contentWindow.history.back()"
+        >
+        <Icon name="tabler:arrow-narrow-left" width="1.5vw" height="1.5vw"/>
+      </button>
+      <button
+          aria-label="Go forward in history"
+        @click="$refs.frame.contentWindow.history.forward()"
+          >
+        <Icon name="tabler:arrow-narrow-right" width="1.5vw" height="1.5vw"/>
+      </button>
+      <button
+          aria-label="Reload"
+          @click="@refs.frame.src=$refs.frame.src"
+          >
+          <Icon name="tabler:reload" width="1.5vw" height="1.5vw"/>
+      </button>
+    <form id="uv-form" class="flex-center">
+  <input spellcheck = "false" autofocus id="uv-address" type="text" placeholder="Search the web freely"
+        class="font-inherit w-[clamp(200px,50vw,42rem)] max-w-[calc(100%-var(--spacing-fluid-xl))] animate-[fadeIn_1.5s_ease-in-out] rounded-2xl border-none bg-[#2f2f2f] px-[var(--spacing-fluid-sm)] py-[calc(var(--spacing-fluid-sm)/4)] text-inherit outline-none"
+        />
+    </form>
+      <button
+        aria-label="Add a bookmark for the current page"
+      >
+      <Icon name="tabler:bookmark" width="1.5vw" height="1.5vw"/>
+      </button>
+        <button aria-label="Developer tools">
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-  <body>
-    <Omnibar/>
-		<h1>Astro</h1>
-	</body>
-</html>
+      <Icon name="tabler:code" width="1.5vw" height="1.5vw"/>
+      </button>
+      <button
+        aria-label="Open sidebar"
+        >
+        <Icon name="tabler:layout-sidebar-right" width="1.5vw" height="1.5vw"/>
+      </button>
+    </nav>
+    <Lethal/>
+
+    <div id="frames">
+      <iframe id="uv-frame" x-ref="frame"></iframe>
+
+    </div>
+</Layout>

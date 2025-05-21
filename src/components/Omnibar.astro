@@ -1,9 +1,41 @@
 ---
-import "../styles/global.css";
-import { Icon } from "astro-icon/components";
+import { Icon } from 'astro-icon/components';
 ---
-<center>
-  <button class="h-6 w-6 transition-transform duration-500 hover:rotate-12">
-    <Icon name="tabler:arrow-narrow-right" />
+<script is:inline defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+<div class="bg-gray-800 p-2 flex items-center space-x-2 rounded-lg">
+  <button
+            @click="$refs.frame.contentWindow.history.back()"
+
+            class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:arrow-left" class="w-5 h-5" />
   </button>
-</center>
+
+  <button class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:arrow-right" class="w-5 h-5" />
+  </button>
+
+  <button class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:reload" class="w-5 h-5" />
+  </button>
+
+  <div class="flex-grow flex items-center bg-gray-900 rounded-md px-3 py-1.5">
+    <Icon name="tabler:search" class="w-5 h-5 text-gray-500 mr-2" />
+        <form id="uv-form" class="flex-center">
+  <input spellcheck = "false" autofocus id="uv-address" type="text" placeholder="Search the web freely" class="text-gray-500"
+        />
+    </form>
+  </div>
+
+  <button class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:share-3" class="w-5 h-5" />
+  </button>
+
+  <button class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:bookmark" class="w-5 h-5" />
+  </button>
+
+  <button class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
+    <Icon name="tabler:square-plus" class="w-5 h-5" />
+  </button>
+</div>

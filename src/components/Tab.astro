@@ -1,0 +1,20 @@
+---
+import { Icon } from 'astro-icon/components';
+
+export interface Props {
+  iconName: string;
+  title: string;
+  isActive?: boolean;
+}
+
+const { iconName, title, isActive = false } = Astro.props;
+
+const baseClasses = "flex items-center space-x-3 p-2 rounded-lg cursor-pointer";
+const activeClasses = "bg-gray-700 text-white";
+const inactiveClasses = "text-gray-400 hover:bg-gray-700/50 hover:text-white";
+---
+
+<div class:list={[baseClasses, isActive ? activeClasses : inactiveClasses]}>
+  <Icon name={iconName} class="w-5 h-5 flex-shrink-0" />
+  <span class="truncate text-sm font-medium">{title}</span>
+</div>
