@@ -1,7 +1,8 @@
 ---
 import { Icon } from 'astro-icon/components';
 ---
-<!-- Alpine.js script is already included -->
+<!-- Alpine.js script is kept as it might be used by other page elements or for basic, non-tab interactions -->
+<script is:inline defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 <div class="bg-gray-800 p-2 flex items-center space-x-2 rounded-lg">
   <button
@@ -20,9 +21,8 @@ import { Icon } from 'astro-icon/components';
 
   <div class="flex-grow flex items-center bg-gray-900 rounded-md px-3 py-1.5">
     <Icon name="tabler:search" class="w-5 h-5 text-gray-500 mr-2" />
-        <form id="uv-form" class="flex-center w-full"> {/* Ensure form takes width */}
-  <input spellcheck = "false" autofocus id="uv-address" type="text" placeholder="Search the web freely" class="text-gray-300 bg-transparent w-full focus:outline-none"
-        />
+    <form id="uv-form" class="flex-center w-full"> {/* Ensure form takes width */}
+      <input spellcheck="false" autofocus id="uv-address" type="text" placeholder="Search the web freely" class="text-gray-300 bg-transparent w-full focus:outline-none" />
     </form>
   </div>
 
@@ -34,145 +34,43 @@ import { Icon } from 'astro-icon/components';
     <Icon name="tabler:bookmark" class="w-5 h-5" />
   </button>
 
-  <button id="omnibar-new-tab-btn" class="p-1.5 bg-gray-700 rounded-md text-gray-400 hover:bg-gray-600">
-    <Icon name="tabler:square-plus" class="w-5 h-5" />
-  </button>
+  <!-- "New Tab" button has been removed -->
 </div>
 
 <script>
-  import tabStore from '../tabStore.js'; // Path from components/Omnibar.astro to src/tabStore.js
-
-  // Helper function to get the active iframe
-  function getActiveIframe() {
-    const activeTab = tabStore.getActiveTab();
-    if (activeTab && activeTab.iframeId) {
-      // Ensure the iframe element actually exists in the DOM
-      const iframeElement = document.getElementById(activeTab.iframeId);
-      if (!iframeElement) {
-          console.error(`getActiveIframe: Iframe element with ID '${activeTab.iframeId}' not found in the DOM.`);
-          return null;
-      }
-      return iframeElement;
-    }
-    console.warn("getActiveIframe: No active tab found or active tab has no iframeId.");
-    return null;
-  }
-
-  function updateOmnibarAddressBar() {
-    const addressInput = document.getElementById('uv-address');
-    const activeTab = tabStore.getActiveTab();
-    if (activeTab && addressInput) {
-      // Only update if the value is different, to avoid resetting user input if they are typing
-      if (addressInput.value !== activeTab.url) {
-        addressInput.value = activeTab.url;
-      }
-    } else if (!activeTab && addressInput) {
-      addressInput.value = ''; // Clear address bar if no active tab
-      console.warn("Omnibar (updateOmnibarAddressBar): No active tab found.");
-    } else if (!addressInput) {
-      console.error("Omnibar (updateOmnibarAddressBar): Address input (uv-address) not found.");
-    }
-  }
+  // tabStore import, getActiveIframe, updateOmnibarAddressBar, and tab-related event listeners removed.
 
   document.addEventListener('DOMContentLoaded', () => {
-    updateOmnibarAddressBar(); // Initial call
-
-    // Existing button listeners
-    const newTabButton = document.getElementById('omnibar-new-tab-btn');
     const backButton = document.getElementById('omnibar-back-btn');
     const forwardButton = document.getElementById('omnibar-forward-btn');
     const reloadButton = document.getElementById('omnibar-reload-btn');
+    // The #uv-address input is now primarily user-driven and read by Lethal.astro
 
-    // "New Tab" button functionality - will still reload for now.
-    // This will be refactored when TabStrip's new tab button is updated.
-    if (newTabButton) {
-      newTabButton.addEventListener('click', () => {
-        console.log("Omnibar: New tab button clicked.");
-        const newTab = tabStore.addTab('about:blank', 'New Tab', true);
-        // Dispatch tabadded event so other components (like index.astro for iframe and TabStrip for DOM rendering) can react
-        document.dispatchEvent(new CustomEvent('tabadded', { detail: { newTab: newTab } }));
-        // And tabchanged to update omnibar and iframe visibility
-        document.dispatchEvent(new CustomEvent('tabchanged', { detail: { activeTabId: newTab.id } }));
-        // For now, Omnibar's own new tab button will still reload because TabStrip's logic
-        // for re-rendering the tab list without reload is not yet implemented.
-        // This reload will be removed once TabStrip handles dynamic rendering.
-        // window.location.reload(); // Temporarily removed to test event-driven updates
-        // If TabStrip doesn't re-render, the new tab won't appear in the strip until next full load.
-        // For now, other components (index.astro, Omnibar itself) will react to the event for the new active tab.
-      });
-    } else {
-      console.error("Omnibar: New tab button (omnibar-new-tab-btn) not found.");
-    }
-
-    // Back Button Functionality
     if (backButton) {
       backButton.addEventListener('click', () => {
-        const iframe = getActiveIframe();
+        const iframe = document.getElementById('uv-frame'); // Target static iframe
         if (iframe && iframe.contentWindow) {
           iframe.contentWindow.history.back();
-        } else {
-          console.warn("Omnibar: Could not get active iframe for 'back' action.");
         }
       });
-    } else {
-      console.error("Omnibar: Back button (omnibar-back-btn) not found.");
     }
 
-    // 4. Forward Button Functionality
     if (forwardButton) {
       forwardButton.addEventListener('click', () => {
-        const iframe = getActiveIframe();
+        const iframe = document.getElementById('uv-frame'); // Target static iframe
         if (iframe && iframe.contentWindow) {
           iframe.contentWindow.history.forward();
-        } else {
-          console.warn("Omnibar: Could not get active iframe for 'forward' action.");
         }
       });
-    } else {
-      console.error("Omnibar: Forward button (omnibar-forward-btn) not found.");
     }
 
-    // 5. Reload Button Functionality
     if (reloadButton) {
       reloadButton.addEventListener('click', () => {
-        const iframe = getActiveIframe();
+        const iframe = document.getElementById('uv-frame'); // Target static iframe
         if (iframe && iframe.contentWindow) {
           iframe.contentWindow.location.reload();
-        } else {
-          console.warn("Omnibar: Could not get active iframe for 'reload' action.");
         }
       });
-    } else {
-      console.error("Omnibar: Reload button (omnibar-reload-btn) not found.");
-    }
-
-    // Note: Stop button is not implemented as per instructions (no existing button to repurpose).
-  });
-
-  // Listen for tab changes to update the address bar
-  document.addEventListener('tabchanged', () => updateOmnibarAddressBar());
-  
-  // Listen for URL changes within the active iframe (e.g., from link clicks or history API)
-  document.addEventListener('activeurlchanged', (event) => {
-    const newUrl = event.detail.newUrl;
-    const addressInput = document.getElementById('uv-address');
-    const activeTab = tabStore.getActiveTab(); // Get current active tab from store
-
-    // Ensure the event's tabId matches the current active tab in the store,
-    // as events could be in flight when tab rapidly changes.
-    // However, activeurlchanged is dispatched only for the active tab from index.astro.
-    // So, simply updating if addressInput exists should be fine.
-    
-    if (addressInput) {
-      if (addressInput.value !== newUrl) {
-        // console.log(`Omnibar: activeurlchanged detected. Updating address bar to: ${newUrl}`);
-        addressInput.value = newUrl;
-      }
-    } else {
-      console.error("Omnibar: Address input (uv-address) not found during activeurlchanged event.");
     }
   });
-
-  // Optional: if URL might come from title and needs to refresh address bar
-  // document.addEventListener('tabtitlechanged', () => updateOmnibarAddressBar());
 </script>
