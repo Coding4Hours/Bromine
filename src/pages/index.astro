@@ -19,86 +19,6 @@ import Omnibar from '@/components/Omnibar.astro';
 <script>
   import tabStore from '../tabStore.js'; // Path from pages/index.astro to src/tabStore.js
 
-  document.addEventListener('DOMContentLoaded', () => {
-    const framesContainer = document.getElementById('frames');
-    if (!framesContainer) {
-      console.error("index.astro: Frames container (div#frames) not found.");
-      return;
-    }
-
-    const allTabs = tabStore.getTabs();
-    if (allTabs.length === 0) {
-        // This should not happen if tabStore initializes with a default tab.
-        // If it does, it might indicate an issue with tabStore initialization or import.
-        console.warn("index.astro: No tabs found in tabStore. Creating a default tab for safety.");
-        // tabStore.addTab('about:blank', 'New Tab', true); // Potentially add one if store is empty
-        // allTabs = tabStore.getTabs(); // And re-fetch
-        // For now, we'll rely on tabStore having an initial tab.
-    }
-
-    allTabs.forEach(tab => {
-      let iframe = document.getElementById(tab.iframeId);
-      if (!iframe) {
-        iframe = document.createElement('iframe');
-        iframe.id = tab.iframeId;
-        iframe.className = 'w-full h-full'; // Standard classes
-        // sandbox attribute can be added here if needed
-        framesContainer.appendChild(iframe);
-      }
-      
-      // Always ensure dataset.tabId is set, useful for the load listener
-      iframe.dataset.tabId = tab.id;
-
-      // Attach load event listener - once per iframe
-      // To prevent attaching multiple listeners if this script runs multiple times (e.g. HMR),
-      // ideally, we'd check if a listener is already attached or manage listeners more carefully.
-      // For now, assuming it runs once on DOMContentLoaded.
-      iframe.removeEventListener('load', handleIframeLoad); // Remove if existing, to be safe
-      iframe.addEventListener('load', handleIframeLoad);
-      
-      // Set initial src only if it's different and the tab expects a specific URL
-      // Lethal.astro handles navigations from the address bar for the active tab.
-      // This part is mainly for restoring state on page reload for non-active tabs or initial load.
-      if (tab.url && iframe.contentWindow && iframe.contentWindow.location.href !== tab.url) {
-        // Only set src if it's not about:blank or if it's different from current
-        // This helps prevent unnecessary reloads of already loaded pages.
-        if (tab.url !== 'about:blank' || iframe.contentWindow.location.href === 'about:blank') {
-             // Avoid resetting src for 'about:blank' if it's already there, unless tab.url is also 'about:blank'
-            if (iframe.src !== tab.url) { // Check current src attribute before changing
-                iframe.src = tab.url;
-            }
-        }
-      } else if (!tab.url && iframe.src !== 'about:blank') {
-        // If tab.url is empty/null, default to about:blank
-        iframe.src = 'about:blank';
-      }
-
-
-      // Set visibility based on active state
-      if (tab.isActive) {
-        iframe.style.display = 'block';
-      } else {
-        iframe.style.display = 'none';
-      }
-    });
-
-    // Fallback for active tab visibility (already exists, kept for safety)
-    const activeTab = tabStore.getActiveTab();
-    if (activeTab) {
-        const activeIframe = document.getElementById(activeTab.iframeId);
-        if (activeIframe && activeIframe.style.display === 'none') {
-            activeIframe.style.display = 'block';
-        }
-    } else if (allTabs.length > 0 && allTabs.find(t => t.isActive)) {
-         // This case should ideally be handled by tabStore ensuring single active tab
-         console.warn("index.astro: Mismatch in active tab state. Multiple or no active tab found in DOM vs Store. Relying on store for active tab.")
-    } else if (allTabs.length > 0) {
-        console.warn("index.astro: No active tab found in store, but tabs exist. Activating first tab and reloading.");
-        tabStore.setActiveTab(allTabs[0].id); // Activate first tab
-        window.location.reload(); // Reload to reflect this change
-    }
-  });
-
   function handleIframeLoad(event) {
     const iframe = event.target;
     const tabIdStr = iframe.dataset.tabId;
@@ -108,46 +28,163 @@ import Omnibar from '@/components/Omnibar.astro';
       return;
     }
     const tabId = parseInt(tabIdStr, 10);
+    const activeTab = tabStore.getActiveTab(); // Get active tab for checks
 
-    // Check if contentDocument is accessible (might not be for cross-origin iframes without proper CORS)
-    // However, for UV (proxied) content, it should generally be accessible.
     try {
-      if (iframe.contentDocument && iframe.contentDocument.title) {
-        const newTitle = iframe.contentDocument.title;
-        if (newTitle) {
-          // console.log(`Iframe for tab ${tabId} loaded. Title: ${newTitle}`);
-          tabStore.updateTabTitle(tabId, newTitle);
+      // Title Update Logic (existing)
+      const pageTitle = iframe.contentDocument ? iframe.contentDocument.title : '';
+      const currentTabInStore = tabStore.getTabs().find(t => t.id === tabId);
 
-          // Option 2: Directly update the title in TabStrip's DOM
-          const tabTitleElement = document.querySelector(`div.tab-item-wrapper[data-tab-id='${tabId}'] span.truncate`);
-          if (tabTitleElement) {
-            tabTitleElement.textContent = newTitle;
-            tabTitleElement.title = newTitle; // Update the tooltip/hover title as well
-          } else {
-            console.warn(`index.astro: Could not find title element for tab ${tabId} in TabStrip to update directly.`);
-            // Fallback: If direct DOM update fails, consider reload, but this might cause loop if load event triggers reload.
-            // For now, just log a warning. A more robust solution might involve custom events or a reactive framework.
-            // window.location.reload(); // Use with caution
-          }
+      if (pageTitle) {
+        if (currentTabInStore && currentTabInStore.title !== pageTitle) {
+          tabStore.updateTabTitle(tabId, pageTitle);
+          document.dispatchEvent(new CustomEvent('tabtitlechanged', { detail: { tabId: tabId, newTitle: pageTitle } }));
         }
-      } else {
-        // console.warn(`index.astro: Iframe for tab ${tabId} loaded, but contentDocument or title is not accessible. Iframe src: ${iframe.src}`);
-        // For about:blank, title might be empty.
-        if (iframe.src === 'about:blank' || iframe.src === '') {
-            const defaultTitle = tabStore.getTabs().find(t=>t.id === tabId)?.url === 'about:blank' ? 'New Tab' : 'Untitled';
-            tabStore.updateTabTitle(tabId, defaultTitle);
-            const tabTitleElement = document.querySelector(`div.tab-item-wrapper[data-tab-id='${tabId}'] span.truncate`);
-            if (tabTitleElement) {
-                tabTitleElement.textContent = defaultTitle;
-                tabTitleElement.title = defaultTitle;
+      } else if (iframe.src === 'about:blank' || iframe.src === '') {
+        const defaultTitle = (currentTabInStore && currentTabInStore.url === 'about:blank') ? 'New Tab' : 'Untitled';
+        if (currentTabInStore && currentTabInStore.title !== defaultTitle) {
+          tabStore.updateTabTitle(tabId, defaultTitle);
+          document.dispatchEvent(new CustomEvent('tabtitlechanged', { detail: { tabId: tabId, newTitle: defaultTitle } }));
+        }
+      }
+
+      // URL Update Logic (New)
+      if (iframe.contentWindow) {
+        const newUrl = iframe.contentWindow.location.href;
+        // Prevent updating store if URL is effectively blank unless it's a deliberate navigation to about:blank
+        // The main check is to see if the newUrl is different from what's already in the store for that tab.
+        if (newUrl && (!currentTabInStore || currentTabInStore.url !== newUrl)) {
+            // Check for 'about:blank' carefully. If the tab URL in store is not 'about:blank' 
+            // but iframe navigates to 'about:blank', it's a valid change.
+            // If newUrl is 'about:blank' and currentTabInStore.url is also 'about:blank', no need to update.
+            if (newUrl !== 'about:blank' || (currentTabInStore && currentTabInStore.url !== 'about:blank')) {
+                 tabStore.updateTabUrl(tabId, newUrl);
+                 if (activeTab && activeTab.id === tabId) {
+                    document.dispatchEvent(new CustomEvent('activeurlchanged', { detail: { newUrl: newUrl, tabId: tabId } }));
+                 }
+            } else if (newUrl === 'about:blank' && currentTabInStore && currentTabInStore.url !== 'about:blank') {
+                // This case handles navigating from a valid URL to about:blank
+                tabStore.updateTabUrl(tabId, newUrl);
+                if (activeTab && activeTab.id === tabId) {
+                    document.dispatchEvent(new CustomEvent('activeurlchanged', { detail: { newUrl: newUrl, tabId: tabId } }));
+                }
             }
+        }
+
+        // Attach popstate listener for SPA-like navigation and history changes (New)
+        // Ensure it's added only once
+        if (!iframe._popStateListenerAttached) {
+          iframe.contentWindow.addEventListener('popstate', () => {
+            // Check if the iframe still exists in the DOM and is part of a tab
+            const currentIframe = document.getElementById(iframe.id);
+            if (!currentIframe || !currentIframe.dataset.tabId) return;
+
+            const popstateTabIdStr = currentIframe.dataset.tabId;
+            const popstateTabId = parseInt(popstateTabIdStr, 10);
+            const currentIframeUrl = currentIframe.contentWindow.location.href;
+            
+            const tabInStore = tabStore.getTabs().find(t => t.id === popstateTabId);
+            if (tabInStore && tabInStore.url !== currentIframeUrl) {
+                tabStore.updateTabUrl(popstateTabId, currentIframeUrl);
+                const currentlyActiveTab = tabStore.getActiveTab(); // Re-fetch active tab state
+                if (currentlyActiveTab && currentlyActiveTab.id === popstateTabId) {
+                    document.dispatchEvent(new CustomEvent('activeurlchanged', { detail: { newUrl: currentIframeUrl, tabId: popstateTabId } }));
+                }
+            }
+          });
+          iframe._popStateListenerAttached = true;
         }
       }
     } catch (e) {
-      console.warn(`index.astro: Error accessing iframe content for tab ${tabId}. This might be due to cross-origin restrictions if content is not proxied.`, e);
-      // Potentially set a generic title like "Error loading title" or keep the existing one.
+      console.warn(`index.astro: Error accessing iframe content for tab ${tabId}. This might be due to cross-origin restrictions or detached iframe. Error: ${e.message}`);
     }
   }
+
+  function updateIframeVisibility() {
+    const framesContainer = document.getElementById('frames');
+    if (!framesContainer) {
+      console.error("index.astro: Frames container (div#frames) not found during update.");
+      return;
+    }
+
+    const allTabs = tabStore.getTabs();
+    if (allTabs.length === 0 && framesContainer.children.length > 0) {
+        // If no tabs in store, remove all iframes from DOM
+        while (framesContainer.firstChild) {
+            framesContainer.removeChild(framesContainer.firstChild);
+        }
+        return;
+    }
+    
+    allTabs.forEach(tab => {
+      let iframe = document.getElementById(tab.iframeId);
+      if (!iframe) {
+        // Create iframe if it doesn't exist
+        iframe = document.createElement('iframe');
+        iframe.id = tab.iframeId;
+        iframe.className = 'w-full h-full'; // Standard classes
+        // sandbox attribute can be added here if needed
+        iframe.dataset.tabId = tab.id; // Associate with tabId for load listener
+        
+        // Set initial src. Lethal.astro will handle subsequent loads for active tab.
+        // This ensures new tabs get about:blank and existing tabs restore their URL.
+        iframe.src = tab.url || 'about:blank'; 
+        
+        iframe.removeEventListener('load', handleIframeLoad); // Ensure no duplicate listeners
+        iframe.addEventListener('load', handleIframeLoad);
+        framesContainer.appendChild(iframe);
+      }
+
+      // Set visibility based on active state
+      iframe.style.display = tab.isActive ? 'block' : 'none';
+    });
+
+    // Clean up: Remove any iframes in the DOM that no longer correspond to a tab in the store
+    const existingIframes = framesContainer.querySelectorAll('iframe');
+    existingIframes.forEach(iframeInDom => {
+        const tabExistsInStore = allTabs.some(tab => tab.iframeId === iframeInDom.id);
+        if (!tabExistsInStore) {
+            iframeInDom.removeEventListener('load', handleIframeLoad); // Clean up listener
+            framesContainer.removeChild(iframeInDom);
+            console.log(`index.astro: Removed orphaned iframe ${iframeInDom.id}`);
+        }
+    });
+    
+    const activeTab = tabStore.getActiveTab();
+    if (activeTab) {
+        const activeIframe = document.getElementById(activeTab.iframeId);
+        if (activeIframe && activeIframe.style.display === 'none') {
+            console.warn(`index.astro: Active tab's iframe (${activeTab.iframeId}) was hidden. Forcing display:block.`);
+            activeIframe.style.display = 'block'; // Ensure active is visible
+        }
+         if (activeIframe && activeIframe.src !== activeTab.url && activeTab.url !== 'about:blank') {
+            // If active tab's URL changed in store (e.g. by Lethal) and iframe src is different
+            // AND it's not just about:blank (which Lethal might not set src for initially)
+            // This could be a place to update src, but Lethal should primarily handle active iframe src.
+            // console.log(`Active iframe ${activeIframe.id} src ${activeIframe.src} differs from store URL ${activeTab.url}. Consider sync.`);
+        }
+    } else if (allTabs.length > 0) {
+        // This state should ideally not be reached if tabStore always ensures an active tab when tabs exist.
+        // If it is, it implies an issue with tabStore logic or its usage.
+        console.warn("index.astro (updateIframeVisibility): No active tab found in store, but tabs exist. UI may be inconsistent.");
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateIframeVisibility(); // Initial call
+    // Ensure that if TabStrip adds the first tab, we update iframes
+    if (tabStore.getTabs().length > 0 && !document.getElementById(tabStore.getActiveTab()?.iframeId)) {
+        console.log("index.astro: Active tab's iframe not found on initial load, re-running updateIframeVisibility.");
+        updateIframeVisibility();
+    }
+  });
+  document.addEventListener('tabchanged', () => updateIframeVisibility());
+  // Listen for new tabs being added (e.g., by Omnibar or TabStrip itself if not reloading)
+  document.addEventListener('tabadded', () => updateIframeVisibility()); 
+  // Listen for tabs being closed (e.g., by TabStrip if not reloading)
+  document.addEventListener('tabclosed', () => updateIframeVisibility());
+
+
 </script>
               
 

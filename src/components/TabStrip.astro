@@ -35,37 +35,141 @@ if (tabs.length === 0) {
 <script>
   import tabStore from '../tabStore.js';
 
+  const activeTabClasses = ["border-sky-500", "text-sky-300", "bg-gray-700/60"];
+  const inactiveTabClasses = ["border-transparent", "text-gray-400", "hover:text-gray-200", "hover:bg-gray-700/40"];
+  // Base classes are assumed to be on the Tab.astro's root div by default from SSR
+  // Base: "flex items-center px-3 py-1.5 cursor-pointer border-b-2 text-sm select-none whitespace-nowrap"
+
+  function updateAllTabVisualStates() {
+    const allTabClickableAreas = document.querySelectorAll('.tab-clickable-area');
+    const activeTabId = tabStore.getActiveTab()?.id;
+
+    allTabClickableAreas.forEach(area => {
+      const tabId = parseInt(area.dataset.tabId, 10);
+      const tabElement = area.querySelector(':scope > div'); // This is the root div of Tab.astro
+
+      if (!tabElement) {
+        console.warn("TabStrip: Could not find Tab.astro root element for area:", area);
+        return;
+      }
+
+      // Remove all potentially conflicting classes first
+      tabElement.classList.remove(...activeTabClasses, ...inactiveTabClasses);
+
+      if (tabId === activeTabId) {
+        tabElement.classList.add(...activeTabClasses);
+      } else {
+        tabElement.classList.add(...inactiveTabClasses);
+      }
+    });
+  }
+  
+  function createTabDOM(tabData) {
+    const tabStripContainer = document.querySelector('.tab-strip-container');
+    const newTabButton = document.getElementById('new-tab-btn');
+    if (!tabStripContainer || !newTabButton) return null;
+
+    // 1. Create tab-item-wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tab-item-wrapper group flex items-center relative flex-shrink-0';
+    wrapper.dataset.tabId = tabData.id;
+
+    // 2. Create tab-clickable-area
+    const clickableArea = document.createElement('div');
+    clickableArea.className = 'tab-clickable-area flex-grow';
+    clickableArea.dataset.tabId = tabData.id;
+
+    // 3. Create Tab.astro's root div (approximating its structure and classes)
+    const tabRoot = document.createElement('div');
+    // Base classes from Tab.astro (Turn 21)
+    tabRoot.className = 'flex items-center px-3 py-1.5 cursor-pointer border-b-2 text-sm select-none whitespace-nowrap'; 
+    
+    // Icon (assuming tabler:world for new tabs)
+    const iconName = tabData.iconName || 'tabler:world';
+    // Astro's <Icon> component generates SVG. We'll use a placeholder or skip for simplicity in dynamic JS.
+    // For a real app, you'd fetch/inject SVG or use a web component for icons.
+    // Let's add a simple span for the icon for now.
+    const iconSpan = document.createElement('span');
+    iconSpan.className = 'w-4 h-4 mr-2 flex-shrink-0'; // Mimic icon classes
+    iconSpan.textContent = '🌐'; // Placeholder for icon
+    
+    // Title span
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px]';
+    titleSpan.title = tabData.title;
+    titleSpan.textContent = tabData.title;
+
+    tabRoot.appendChild(iconSpan);
+    tabRoot.appendChild(titleSpan);
+    clickableArea.appendChild(tabRoot);
+
+    // 4. Create close button
+    const closeButton = document.createElement('button');
+    closeButton.className = 'close-tab-btn p-0.5 ml-1 text-gray-500 hover:text-white hover:bg-gray-700/70 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity absolute right-1.5 top-1/2 -translate-y-1/2 z-10';
+    closeButton.dataset.tabId = tabData.id;
+    closeButton.setAttribute('aria-label', 'Close tab');
+    // Icon for close button (placeholder)
+    const closeIconSpan = document.createElement('span');
+    closeIconSpan.className = 'w-3.5 h-3.5 block'; // Assuming Icon component creates a block/inline-block
+    closeIconSpan.textContent = 'X'; // Placeholder for close icon
+    
+    closeButton.appendChild(closeIconSpan);
+
+    // Assemble
+    wrapper.appendChild(clickableArea);
+    wrapper.appendChild(closeButton);
+
+    // Insert before the new tab button
+    tabStripContainer.insertBefore(wrapper, newTabButton);
+    return wrapper;
+  }
+
+
   document.addEventListener('DOMContentLoaded', () => {
     const tabStripContainer = document.querySelector('.tab-strip-container');
-
     if (!tabStripContainer) {
-        console.error("TabStrip container not found. Event listeners will not be attached.");
-        return;
+      console.error("TabStrip container not found.");
+      return;
     }
     
+    // Initial visual state update for server-rendered tabs
+    updateAllTabVisualStates();
+
     tabStripContainer.addEventListener('click', (event) => {
       const target = event.target;
       const tabClickableArea = target.closest('.tab-clickable-area');
       const closeButton = target.closest('.close-tab-btn');
 
-      if (closeButton) { // Prioritize close button if clicked, even if it's within clickable area
-        const tabId = parseInt(closeButton.dataset.tabId, 10);
-        if (!isNaN(tabId)) {
-          tabStore.closeTab(tabId);
-          window.location.reload();
+      if (closeButton) {
+        event.stopPropagation(); // Prevent tab activation click
+        const tabIdToClose = parseInt(closeButton.dataset.tabId, 10);
+        if (isNaN(tabIdToClose)) return;
+
+        const tabElementToRemove = closeButton.closest('.tab-item-wrapper');
+        
+        tabStore.closeTab(tabIdToClose); // This might change active tab
+        
+        if (tabElementToRemove) {
+          tabElementToRemove.remove();
         }
+        
+        const newActiveTab = tabStore.getActiveTab();
+        updateAllTabVisualStates(); // Update classes on remaining tabs
+        document.dispatchEvent(new CustomEvent('tabclosed', { detail: { closedTabId: tabIdToClose } }));
+        document.dispatchEvent(new CustomEvent('tabchanged', { detail: { activeTabId: newActiveTab ? newActiveTab.id : null } }));
         return;
       }
       
       if (tabClickableArea) {
         const tabId = parseInt(tabClickableArea.dataset.tabId, 10);
-        if (!isNaN(tabId)) {
-          const currentActiveTab = tabStore.getActiveTab();
-          if (!currentActiveTab || currentActiveTab.id !== tabId) { // Only reload if activating a different tab
-            tabStore.setActiveTab(tabId);
-            window.location.reload();
-          }
-        }
+        if (isNaN(tabId)) return;
+
+        const currentActiveTab = tabStore.getActiveTab();
+        if (currentActiveTab && currentActiveTab.id === tabId) return; // Already active
+
+        tabStore.setActiveTab(tabId);
+        updateAllTabVisualStates();
+        document.dispatchEvent(new CustomEvent('tabchanged', { detail: { activeTabId: tabId } }));
         return;
       }
     });
@@ -73,14 +177,62 @@ if (tabs.length === 0) {
     const newTabButton = document.getElementById('new-tab-btn');
     if (newTabButton) {
       newTabButton.addEventListener('click', () => {
-        tabStore.addTab('about:blank', 'New Tab', true);
-        window.location.reload();
+        const newTab = tabStore.addTab('about:blank', 'New Tab', true);
+        // Check if DOM element for this tab already exists to prevent duplicates if event handling is tricky
+        if (!document.querySelector(`.tab-item-wrapper[data-tab-id='${newTab.id}']`)) {
+            createTabDOM(newTab); // Create and append the new tab's DOM if not already there
+        }
+        updateAllTabVisualStates(); // Update active states
+        
+        // Dispatch tabadded with the full newTab object
+        document.dispatchEvent(new CustomEvent('tabadded', { detail: { newTab: newTab } }));
+        // Dispatch tabchanged, other components rely on this to update for the new active tab
+        document.dispatchEvent(new CustomEvent('tabchanged', { detail: { activeTabId: newTab.id } }));
       });
     }
+
+    // Listen for title changes from index.astro (iframe loads)
+    document.addEventListener('tabtitlechanged', (event) => {
+        const { tabId, newTitle } = event.detail;
+        const tabClickableArea = tabStripContainer.querySelector(`.tab-clickable-area[data-tab-id='${tabId}']`);
+        if (tabClickableArea) {
+            const titleSpan = tabClickableArea.querySelector('span.truncate');
+            if (titleSpan) {
+                titleSpan.textContent = newTitle;
+                titleSpan.title = newTitle;
+            }
+        }
+    });
+
+    // Listen for tabadded events from any source (e.g., Omnibar)
+    document.addEventListener('tabadded', (event) => {
+        const newTabData = event.detail.newTab;
+        if (newTabData) {
+            // Check if this tab element is already in the DOM
+            // This prevents double rendering if the event was dispatched by TabStrip's own button
+            // which already called createTabDOM.
+            if (!document.querySelector(`.tab-item-wrapper[data-tab-id='${newTabData.id}']`)) {
+                createTabDOM(newTabData);
+            }
+            // Always ensure visual states are correct, especially for the new active tab
+            // updateAllTabVisualStates() is called by the 'tabchanged' event that follows 'tabadded',
+            // or by the newTabButton click handler itself.
+            // Calling it here again might be redundant if 'tabchanged' always follows 'tabadded'
+            // and correctly triggers visual updates. Let's rely on the subsequent 'tabchanged'
+            // or the originating click handler to manage final visual state.
+            // However, if tabadded could come without a subsequent tabchanged, then it's needed.
+            // For now, let's assume updateAllTabVisualStates will be handled by active tab logic.
+            // The primary role here is to ensure the DOM element exists.
+        } else {
+            console.warn('TabStrip: tabadded event received without newTabData.');
+        }
+    });
   });
 </script>
 
 <style>
+  /* Styles remain the same */
+  /* Styles remain the same */
   .tab-strip-container {
     min-height: 44px; /* Adjusted to fit p-1 and typical tab height well */
     /* Ensures smooth scrolling on trackpads/mice that support it */

@@ -58,38 +58,53 @@ import { Icon } from 'astro-icon/components';
     return null;
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
+  function updateOmnibarAddressBar() {
     const addressInput = document.getElementById('uv-address');
+    const activeTab = tabStore.getActiveTab();
+    if (activeTab && addressInput) {
+      // Only update if the value is different, to avoid resetting user input if they are typing
+      if (addressInput.value !== activeTab.url) {
+        addressInput.value = activeTab.url;
+      }
+    } else if (!activeTab && addressInput) {
+      addressInput.value = ''; // Clear address bar if no active tab
+      console.warn("Omnibar (updateOmnibarAddressBar): No active tab found.");
+    } else if (!addressInput) {
+      console.error("Omnibar (updateOmnibarAddressBar): Address input (uv-address) not found.");
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    updateOmnibarAddressBar(); // Initial call
+
+    // Existing button listeners
     const newTabButton = document.getElementById('omnibar-new-tab-btn');
     const backButton = document.getElementById('omnibar-back-btn');
     const forwardButton = document.getElementById('omnibar-forward-btn');
     const reloadButton = document.getElementById('omnibar-reload-btn');
 
-    // 1. Set address bar to active tab's URL
-    const activeTab = tabStore.getActiveTab();
-    if (activeTab && addressInput) {
-      addressInput.value = activeTab.url;
-    } else if (!activeTab) {
-        console.warn("Omnibar: No active tab found on load.");
-    } else if (!addressInput) {
-        console.error("Omnibar: Address input (uv-address) not found.");
-    }
-
-    // 2. "New Tab" button functionality
+    // "New Tab" button functionality - will still reload for now.
+    // This will be refactored when TabStrip's new tab button is updated.
     if (newTabButton) {
       newTabButton.addEventListener('click', () => {
         console.log("Omnibar: New tab button clicked.");
-        tabStore.addTab('about:blank', 'New Tab', true); // Add new tab and set it active
-        window.location.reload(); // Reload to reflect changes
+        const newTab = tabStore.addTab('about:blank', 'New Tab', true);
+        // Dispatch tabadded event so other components (like index.astro for iframe and TabStrip for DOM rendering) can react
+        document.dispatchEvent(new CustomEvent('tabadded', { detail: { newTab: newTab } }));
+        // And tabchanged to update omnibar and iframe visibility
+        document.dispatchEvent(new CustomEvent('tabchanged', { detail: { activeTabId: newTab.id } }));
+        // For now, Omnibar's own new tab button will still reload because TabStrip's logic
+        // for re-rendering the tab list without reload is not yet implemented.
+        // This reload will be removed once TabStrip handles dynamic rendering.
+        // window.location.reload(); // Temporarily removed to test event-driven updates
+        // If TabStrip doesn't re-render, the new tab won't appear in the strip until next full load.
+        // For now, other components (index.astro, Omnibar itself) will react to the event for the new active tab.
       });
     } else {
       console.error("Omnibar: New tab button (omnibar-new-tab-btn) not found.");
     }
 
-    // Placeholder for future: Update address bar when tab changes without full reload
-    // ... (existing placeholder comment) ...
-
-    // 3. Back Button Functionality
+    // Back Button Functionality
     if (backButton) {
       backButton.addEventListener('click', () => {
         const iframe = getActiveIframe();
@@ -133,4 +148,31 @@ import { Icon } from 'astro-icon/components';
 
     // Note: Stop button is not implemented as per instructions (no existing button to repurpose).
   });
+
+  // Listen for tab changes to update the address bar
+  document.addEventListener('tabchanged', () => updateOmnibarAddressBar());
+  
+  // Listen for URL changes within the active iframe (e.g., from link clicks or history API)
+  document.addEventListener('activeurlchanged', (event) => {
+    const newUrl = event.detail.newUrl;
+    const addressInput = document.getElementById('uv-address');
+    const activeTab = tabStore.getActiveTab(); // Get current active tab from store
+
+    // Ensure the event's tabId matches the current active tab in the store,
+    // as events could be in flight when tab rapidly changes.
+    // However, activeurlchanged is dispatched only for the active tab from index.astro.
+    // So, simply updating if addressInput exists should be fine.
+    
+    if (addressInput) {
+      if (addressInput.value !== newUrl) {
+        // console.log(`Omnibar: activeurlchanged detected. Updating address bar to: ${newUrl}`);
+        addressInput.value = newUrl;
+      }
+    } else {
+      console.error("Omnibar: Address input (uv-address) not found during activeurlchanged event.");
+    }
+  });
+
+  // Optional: if URL might come from title and needs to refresh address bar
+  // document.addEventListener('tabtitlechanged', () => updateOmnibarAddressBar());
 </script>
