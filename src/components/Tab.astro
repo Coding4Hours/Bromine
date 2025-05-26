@@ -2,19 +2,19 @@
 import { Icon } from 'astro-icon/components';
 
 export interface Props {
-  iconName: string;
   title: string;
-  isActive?: boolean;
+  isActive: boolean;
+  iconName?: string;
 }
+const { title, isActive, iconName } = Astro.props;
 
-const { iconName, title, isActive = false } = Astro.props;
-
-const baseClasses = "flex items-center space-x-3 p-2 rounded-lg cursor-pointer";
-const activeClasses = "bg-gray-700 text-white";
-const inactiveClasses = "text-gray-400 hover:bg-gray-700/50 hover:text-white";
+// Refined styling for tabs
+const baseTabClasses = "flex items-center px-3 py-1.5 cursor-pointer border-b-2 text-sm select-none whitespace-nowrap";
+const activeTabClasses = "border-sky-500 text-sky-300 bg-gray-700/60"; // Slightly more opaque active bg
+const inactiveTabClasses = "border-transparent text-gray-400 hover:text-gray-200 hover:bg-gray-700/40";
+// Removed hover:border-gray-500 from inactive as hover:bg should be enough
 ---
-
-<div class:list={[baseClasses, isActive ? activeClasses : inactiveClasses]}>
-  <Icon name={iconName} class="w-5 h-5 flex-shrink-0" />
-  <span class="truncate text-sm font-medium">{title}</span>
+<div class:list={[baseTabClasses, isActive ? activeTabClasses : inactiveTabClasses]}>
+  {iconName && <Icon name={iconName} class="w-4 h-4 mr-2 flex-shrink-0" />}
+  <span class="truncate max-w-[120px] sm:max-w-[160px] md:max-w-[200px]" title={title}>{title}</span> {/* Responsive max-width for title */}
 </div>

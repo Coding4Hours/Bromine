@@ -1,0 +1,96 @@
+---
+import Tab from './Tab.astro';
+import tabStore from '../tabStore.js';
+import { Icon } from 'astro-icon/components';
+
+const tabs = tabStore.getTabs();
+if (tabs.length === 0) {
+    // This should be handled by tabStore initialization.
+    console.warn("TabStrip.astro: tabStore was initially empty.");
+}
+---
+<div class="tab-strip-container flex items-center bg-gray-800 p-1 space-x-1 overflow-x-auto border-b border-gray-700/60">
+  {tabs.map(tab => (
+    <div class="tab-item-wrapper group flex items-center relative flex-shrink-0" data-tab-id={tab.id}> {/* Added flex-shrink-0 */}
+      {/* Tab clickable area now encompasses the Tab component directly for simplicity in event handling for activation */}
+      <div class="tab-clickable-area flex-grow" data-tab-id={tab.id}>
+        <Tab title={tab.title} isActive={tab.isActive} iconName={tab.iconName || "tabler:world"} /> {/* Added fallback icon */}
+      </div>
+      {/* Close button: visible on group-hover (tab item wrapper hover) */}
+      <button 
+        class="close-tab-btn p-0.5 ml-1 text-gray-500 hover:text-white hover:bg-gray-700/70 rounded-full opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity absolute right-1.5 top-1/2 -translate-y-1/2 z-10" 
+        data-tab-id={tab.id} 
+        aria-label="Close tab"
+      >
+        <Icon name="tabler:x" class="w-3.5 h-3.5" />
+      </button>
+    </div>
+  ))}
+  {/* New Tab Button - styled like other action buttons */}
+  <button id="new-tab-btn" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-md ml-1 flex-shrink-0" aria-label="New tab">
+    <Icon name="tabler:plus" class="w-5 h-5" />
+  </button>
+</div>
+
+<script>
+  import tabStore from '../tabStore.js';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const tabStripContainer = document.querySelector('.tab-strip-container');
+
+    if (!tabStripContainer) {
+        console.error("TabStrip container not found. Event listeners will not be attached.");
+        return;
+    }
+    
+    tabStripContainer.addEventListener('click', (event) => {
+      const target = event.target;
+      const tabClickableArea = target.closest('.tab-clickable-area');
+      const closeButton = target.closest('.close-tab-btn');
+
+      if (closeButton) { // Prioritize close button if clicked, even if it's within clickable area
+        const tabId = parseInt(closeButton.dataset.tabId, 10);
+        if (!isNaN(tabId)) {
+          tabStore.closeTab(tabId);
+          window.location.reload();
+        }
+        return;
+      }
+      
+      if (tabClickableArea) {
+        const tabId = parseInt(tabClickableArea.dataset.tabId, 10);
+        if (!isNaN(tabId)) {
+          const currentActiveTab = tabStore.getActiveTab();
+          if (!currentActiveTab || currentActiveTab.id !== tabId) { // Only reload if activating a different tab
+            tabStore.setActiveTab(tabId);
+            window.location.reload();
+          }
+        }
+        return;
+      }
+    });
+
+    const newTabButton = document.getElementById('new-tab-btn');
+    if (newTabButton) {
+      newTabButton.addEventListener('click', () => {
+        tabStore.addTab('about:blank', 'New Tab', true);
+        window.location.reload();
+      });
+    }
+  });
+</script>
+
+<style>
+  .tab-strip-container {
+    min-height: 44px; /* Adjusted to fit p-1 and typical tab height well */
+    /* Ensures smooth scrolling on trackpads/mice that support it */
+    -webkit-overflow-scrolling: touch; 
+  }
+  .tab-item-wrapper:hover .close-tab-btn {
+    /* This is handled by group-hover:opacity-100 now, but could be used for other effects */
+  }
+  /* Add some spacing to the right of the last tab before the new tab button if scrolling */
+  .tab-item-wrapper:last-of-type {
+    /* margin-right: 4px; /* Not strictly needed with space-x-1 on container but can help */
+  }
+</style>

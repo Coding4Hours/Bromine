@@ -1,25 +1,65 @@
 ---
 ---
 <script type="module">
-      import { setTransport, setWisp, makeURL, getProxied } from './lethal.mjs'
-      
-      const form = document.getElementById('uv-form'); 
-        const frame = document.getElementById('uv-frame');
-        
-		// let wispUrl = (location.protocol === "https:" ? "wss" : "ws") + "://" + location.host + "/wisp/";
-     const address = document.getElementById("uv-address");
+      import { setTransport, setWisp, makeURL, getProxied } from './lethal.mjs';
+      import tabStore from '../tabStore.js'; // Corrected path
 
-         if (navigator.userAgent.indexOf("Firefox") > 0) setTransport('libcurl');
-         else setTransport("epoxy");
+      const form = document.getElementById('uv-form');
+      // The specific frame is now determined dynamically, so remove the static reference here.
+      // const frame = document.getElementById('uv-frame-0'); 
+      const address = document.getElementById("uv-address");
 
-setWisp("wss://wisp.rhw.one/");
-       // setWisp('wss://wisp.mercurywork.shop/wisp/');
+      if (navigator.userAgent.indexOf("Firefox") > 0) setTransport('libcurl');
+      else setTransport("epoxy");
 
+      setWisp("wss://wisp.rhw.one/");
+      // setWisp('wss://wisp.mercurywork.shop/wisp/');
+
+      if (form) {
         form.addEventListener("submit", async (event) => {
           event.preventDefault();
-                  frame.src = await getProxied(makeURL(address.value));
+          
+          const activeTab = tabStore.getActiveTab();
+          if (!activeTab) {
+            console.error("Lethal.astro: No active tab found to load URL into.");
+            // Potentially create a new tab or show an error to the user
+            // For now, let's try to add a tab and reload, then the user can try again.
+            // This might be too aggressive, but handles a potential dead-end.
+            // tabStore.addTab(address.value, 'New Tab', true);
+            // window.location.reload();
+            return;
+          }
 
+          const activeTabIframe = document.getElementById(activeTab.iframeId);
+          if (!activeTabIframe) {
+            console.error(`Lethal.astro: Iframe with id ${activeTab.iframeId} not found for active tab ${activeTab.id}.`);
+            // This suggests a mismatch between tabStore and DOM, possibly an issue with iframe creation in index.astro
+            // Attempting to reload might help if iframes are created on DOMContentLoaded
+            // window.location.reload(); 
+            return;
+          }
 
-        })
+          const urlToLoad = address.value;
+          try {
+            // Update the iframe src to trigger navigation
+            activeTabIframe.src = await getProxied(makeURL(urlToLoad));
+            
+            // Update the tab's URL in the store
+            tabStore.updateTabUrl(activeTab.id, urlToLoad); 
+            
+            // Optional: Update tab title immediately to the URL, or wait for iframe load event
+            // tabStore.updateTabTitle(activeTab.id, urlToLoad.substring(0, 30)); // Example: use URL as temp title
+
+            // Reloading the page to reflect changes in TabStrip (e.g. new URL displayed if tab title changes)
+            // This is a temporary strategy. Ideally, components should react to store changes.
+            // window.location.reload(); // Commenting out for now, let's see if Omnibar updates correctly or if TabStrip needs it for title
+          } catch (e) {
+            console.error("Error loading URL in Lethal.astro:", e);
+            // Handle error (e.g., show message to user)
+          }
+        });
+      } else {
+        console.error("Lethal.astro: UV form (uv-form) not found.");
+      }
     </script>
 
