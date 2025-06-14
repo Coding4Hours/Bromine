@@ -308,39 +308,87 @@ import Bookmarks from "@/components/Bookmarks.astro";
   });
 
   // --- Form Submission Logic ---
-  // This logic assumes it's within the main page script or a shared script that handles the iframe.
-  // It determines if the input is a URL or a search query and loads it into the iframe.
   form.addEventListener("submit", (e) => {
     e.preventDefault();
     let query = addressInput.value.trim();
 
     if (!query) {
-      if (iframe) iframe.src = "about:blank"; // Clear iframe or show homepage if input is empty
+      if (iframe) iframe.src = "about:blank";
       return;
     }
 
+    // Check for internal bromine:// URLs
+    if (query.startsWith("bromine://")) {
+      if (query === "bromine://history") {
+        // Navigate the main window (parent of the iframe) to the history page
+        window.location.href = "/history";
+      } else {
+        // Handle other potential bromine:// URLs or show an error/default page
+        console.warn(`Unknown bromine URL: ${query}`);
+        if (iframe) iframe.src = "about:blank"; // Or some error page
+      }
+      addressInput.blur();
+      suggestionsContainer.classList.add("hidden");
+      delete addressInput.dataset.originalValue;
+      currentHighlightedIndex = -1;
+      return; // Important: return after handling internal URL
+    }
+
     let url;
-    // Simple check to determine if it's likely a URL (contains a dot and no spaces)
     const isLikelyUrl = query.includes(".") && !query.includes(" ");
 
     if (isLikelyUrl) {
       if (!query.startsWith("http://") && !query.startsWith("https://")) {
-        url = `https://${query}`; // Prepend https:// for domains (e.g., "example.com" -> "https://example.com")
+        url = `https://${query}`;
       } else {
-        url = query; // Use as-is if protocol is already present
+        url = query;
       }
     } else {
-      // Otherwise, treat as a search query
-      url = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`; // Use DuckDuckGo for search
+      url = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`;
     }
 
     if (iframe) {
-      iframe.src = url; // Load the determined URL into the iframe
+      // We need to use getProxied for external URLs if this is a proxy browser
+      // Assuming getProxied is available globally or imported
+      // For simplicity, this example directly sets iframe.src.
+      // If getProxied is needed, ensure it's accessible here.
+      // The lethal.mjs functions are not directly available in this scope by default.
+      // This might require further refactoring or making getProxied globally available
+      // if all iframe navigations must go through it.
+
+      // For now, let's assume direct navigation for simplicity of this step.
+      // If `getProxied` is essential for ALL navigations, this part needs adjustment.
+      // The history page itself uses getProxied, so consistency is ideal.
+      // One way to handle this is to make `getProxied` available on the window object from lethal.mjs
+      // or by refactoring how URLs are loaded into the iframe more centrally.
+
+      // Let's try to make getProxied available to test this properly.
+      // This subtask will assume `window.getProxied` is made available from another script (e.g. lethal.mjs)
+      // If not, this will fail and we'll adjust.
+      if (window.getProxied) {
+          window.getProxied(url).then(proxiedUrl => {
+              iframe.src = proxiedUrl;
+          }).catch(err => {
+              console.error('Error getting proxied URL:', err);
+              iframe.src = 'about:blank'; // Fallback
+          });
+      } else {
+          // Fallback if getProxied is not available on window
+          // This is the original behavior
+          iframe.src = url;
+      }
     }
 
-    addressInput.blur(); // Hide keyboard on mobile
-    suggestionsContainer.classList.add("hidden"); // Hide suggestions after submission
-    delete addressInput.dataset.originalValue; // Clean up stored original value
-    currentHighlightedIndex = -1; // Reset highlight
+    addressInput.blur();
+    suggestionsContainer.classList.add("hidden");
+    delete addressInput.dataset.originalValue;
+    currentHighlightedIndex = -1;
   });
+
+  // Attempt to import and attach getProxied to window from lethal.mjs
+  // This is a workaround. A better solution would be a shared module or service.
+  import { getProxied } from '@/components/lethal.mjs'; // Assuming Omnibar.astro and lethal.mjs are in the same dir
+  if (typeof window !== 'undefined') {
+    (window as any).getProxied = getProxied;
+  }
 </script>

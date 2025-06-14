@@ -1,50 +1,67 @@
 ---
-import Popup from "@/Popup.astro";
+import { Icon } from "astro-icon/components";
 ---
 
-<Popup
+<a
+  href="/history"
+  id="omnibar-history-link"
+  aria-label="History"
+  class="shadow-md bg-surface p-1.5 rounded-md hover:bg-highlight-med"
   title="History"
-  triggerAriaLabel="History"
-  triggerIcon="ph:clock-counter-clockwise-bold"
-  triggerId="omnibar-history-btn"
-  popupId="history-popup"
-  contentId="history-popup-content"
-  closeBtnId="history-close-btn"
 >
-  <ul class="space-y-2" id="history"></ul>
-</Popup>
+  <Icon name="ph:clock-counter-clockwise-bold" class="size-4.5" />
+</a>
 
-<script defer async type="module">
-  import { makeURL, getProxied } from "./lethal.mjs";
+<script>
+  // Script to add a new history entry
+  // This function might be called from other parts of the application
+  // when a page is visited.
+  function addHistoryEntry(url, title) {
+    if (!url || url === 'about:blank') return;
 
-  async function handleHistoryItemClick(url) {
-    document.getElementById("frame").src = await getProxied(url);
+    const history = JSON.parse(localStorage.getItem("history") || "[]");
+
+    // Avoid duplicate consecutive entries
+    if (history.length > 0 && history[history.length - 1].url === url) {
+      return;
+    }
+
+    const newEntry = {
+      url,
+      title: title || url, // Use URL as title if document title is not available
+      timestamp: new Date().toISOString(),
+    };
+
+    history.push(newEntry);
+    localStorage.setItem("history", JSON.stringify(history));
+
+    // Dispatch a custom event to notify other components (like the history page)
+    // that the history has changed.
+    window.dispatchEvent(new CustomEvent("history-changed", { detail: newEntry }));
   }
 
-  // Function to render the list from localStorage
-  function renderHistoryList() {
-    const history = JSON.parse(localStorage.getItem("history") || "[]");
-    const list = document.getElementById("history");
-    if (!list) return;
-    list.innerHTML = "";
-    history.forEach((item) => {
-      const li = document.createElement("li");
-      li.innerHTML = `<span title="${item.url}" class="text-iris underline">${item.title}</span>`;
-      li.addEventListener("click", () => handleHistoryItemClick(item.url));
-      list.appendChild(li);
+  // Expose addHistoryEntry to the window object if it needs to be called from non-module scripts
+  // or from the iframe's content.
+  // Consider a more robust event-based or message-passing mechanism for iframe communication.
+  if (typeof window !== 'undefined') {
+    (window as any).addHistoryEntry = addHistoryEntry;
+  }
+
+  // Example of how history might be added when the main iframe navigates.
+  // This should ideally be in a more central part of your application logic
+  // that manages the iframe.
+  const iframe = document.getElementById('frame') as HTMLIFrameElement | null;
+  if (iframe) {
+    iframe.addEventListener('load', () => {
+      // Ensure contentWindow and contentDocument are available
+      if (iframe.contentWindow && iframe.contentWindow.location.href !== 'about:blank') {
+        // Use a short delay to allow title to update after page load
+        setTimeout(() => {
+          const pageUrl = iframe.contentWindow.location.href;
+          const pageTitle = iframe.contentWindow.document.title;
+          addHistoryEntry(pageUrl, pageTitle);
+        }, 100);
+      }
     });
   }
-
-  // Listen for storage changes from other tabs/windows
-  window.addEventListener("storage", (event) => {
-    if (event.key === "history") {
-      renderHistoryList();
-    }
-  });
-
-  // Listen for the custom event in this tab
-  window.addEventListener("history-changed", renderHistoryList);
-
-  // Initial render
-  renderHistoryList();
 </script>
