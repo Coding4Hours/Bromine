@@ -55,9 +55,12 @@
   // --- Form ---
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-
-    const urlToLoad = makeURL(addressInput.value, search);
-    frame.src = await getProxied(urlToLoad);
+    if(addressInput.value == "bromine://history") {
+      frame.src = "/history";
+    } else {
+      const urlToLoad = makeURL(addressInput.value, search);
+      frame.src = await getProxied(urlToLoad);
+    }
   });
 
   // --- Event Listeners ---
