@@ -24,10 +24,7 @@
 @font-face {
   font-family: "Switzer";
   font-style: normal;
-  src:
-    local("Switzer"),
-    local("Switzer"),
-    url("/switzer.woff2") format("woff2");
+  src: local("Switzer"), local("Switzer"), url("/switzer.woff2") format("woff2");
   font-display: swap;
 }
 
