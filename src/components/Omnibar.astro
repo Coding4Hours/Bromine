@@ -6,7 +6,7 @@ import Bookmarks from "@/components/Bookmarks.astro"
 ---
 
 <Bookmarks />
-<nav class="sticky top-0 bg-base/50 p-2 flex items-center space-x-2 z-[25]">
+<nav class="bg-surface/50 p-2 flex items-center space-x-2 z-[25]">
   <h1 class="mr-auto">bromine</h1>
   <div class="flex items-center justify-center flex-1 space-x-2">
     <button
@@ -343,4 +343,20 @@ import Bookmarks from "@/components/Bookmarks.astro"
     delete addressInput.dataset.originalValue; // Clean up stored original value
     currentHighlightedIndex = -1; // Reset highlight
   });
+
+  // Scroll-dependent styling for Omnibar
+  const omnibarNav = document.querySelector('nav.p-2.flex.items-center');
+
+  function handleScroll() {
+    if (omnibarNav) {
+      if (window.scrollY > 0) {
+        omnibarNav.classList.add('scrolled-omnibar');
+      } else {
+        omnibarNav.classList.remove('scrolled-omnibar');
+      }
+    }
+  }
+
+  window.addEventListener('scroll', handleScroll);
+  handleScroll(); // Initial check
 </script>

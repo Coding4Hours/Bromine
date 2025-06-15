@@ -67,3 +67,10 @@ button:active {
 [data-icon] {
   stroke-width: 3; /* Increase stroke thickness */
 }
+
+.scrolled-omnibar {
+  position: sticky;
+  top: 0;
+  /* Corresponds to #191724 (var --color-base) with 50% opacity */
+  background-color: rgba(25, 23, 36, 0.5);
+}
