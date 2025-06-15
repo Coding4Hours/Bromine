@@ -1,0 +1,115 @@
+---
+import Layout from "@/Layout.astro"
+---
+
+<Layout title="History">
+  <div class="container mx-auto p-4 max-w-4xl text-text">
+    <div class="flex justify-between items-center mb-6"> {/* Increased mb for more spacing */}
+      <h1 class="text-3xl font-semibold text-text">History</h1> {/* Ensured text-text, increased size */}
+      <button id="clear-history-btn" class="bg-iris hover:opacity-80 text-highlight-high font-bold py-2 px-4 rounded transition-opacity">
+        Clear History
+      </button> {/* Used theme color --color-love (via bg-love), adjusted hover */}
+    </div>
+    <ul class="space-y-2" id="history-list">
+      {/* History items will be rendered here by JavaScript */}
+    </ul>
+  </div>
+</Layout>
+
+<script is:inline defer async>
+  import { getProxied } from '/lethal.mjs';
+
+  // Function to render the list from localStorage
+  function renderHistoryList() {
+    const history = JSON.parse(localStorage.getItem("history") || "[]");
+    const list = document.getElementById("history-list");
+    if (!list) return;
+
+    list.innerHTML = ""; // Clear existing items
+
+    if (history.length === 0) {
+      const li = document.createElement("li");
+      li.textContent = "No history items yet.";
+      // Applied theme text color and centering for the empty message
+      li.className = "text-muted text-center p-4";
+      list.appendChild(li);
+      return;
+    }
+
+    history.forEach((item) => {
+      const li = document.createElement("li");
+      // Ensured classes are consistent with theme (p-2, hover:bg-highlight-low, rounded, cursor-pointer)
+      li.className = "p-3 bg-surface hover:bg-highlight-med rounded cursor-pointer transition-colors";
+
+      const titleSpan = document.createElement("span");
+      titleSpan.textContent = item.title || 'No Title';
+      // text-iris is a theme color, font-medium is good
+      titleSpan.className = "text-iris font-semibold text-lg block mb-1";
+
+      const urlSpan = document.createElement("span");
+      urlSpan.textContent = item.url;
+      // text-text for URL, text-sm and block are good. Added opacity for subtlety.
+      urlSpan.className = "text-subtle text-sm block";
+
+      li.appendChild(titleSpan);
+      li.appendChild(urlSpan);
+
+      li.addEventListener("click", async () => {
+        // Navigate to the URL using the frame if it exists, otherwise fallback
+        const frame = document.getElementById("frame") as HTMLIFrameElement | null;
+        if (frame && typeof getProxied === 'function') {
+          try {
+            frame.src = await getProxied(item.url);
+          } catch (e) {
+            console.error("Error proxying URL for frame:", e);
+            // Fallback or error handling if proxying fails
+            window.location.href = item.url;
+          }
+        } else if (typeof getProxied === 'function') {
+          try {
+            window.location.href = await getProxied(item.url);
+          } catch (e) {
+            console.error("Error proxying URL for window:", e);
+            window.location.href = item.url; // Fallback
+          }
+        } else { // Fallback if getProxied is not available
+          window.location.href = item.url;
+        }
+      });
+      list.appendChild(li);
+    });
+  }
+
+  // Function to clear history
+  function clearHistory() {
+    if (confirm("Are you sure you want to clear all history?")) {
+      localStorage.removeItem("history");
+      renderHistoryList(); // Re-render the list (it will show "No history items")
+      // Dispatch a custom event so other parts of the app can react if needed
+      window.dispatchEvent(new CustomEvent("history-cleared"));
+      window.dispatchEvent(new CustomEvent("history-changed")); // also dispatch this for consistency
+    }
+  }
+
+  // Event listener for the clear history button
+  const clearButton = document.getElementById("clear-history-btn");
+  if (clearButton) {
+    clearButton.addEventListener("click", clearHistory);
+  }
+
+  // Listen for storage changes from other tabs/windows
+  window.addEventListener("storage", (event) => {
+    if (event.key === "history") {
+      renderHistoryList();
+    }
+  });
+
+  // Listen for the custom event in this tab (e.g., when history is added)
+  window.addEventListener("history-changed", renderHistoryList);
+
+  // Initial render
+  document.addEventListener('DOMContentLoaded', () => {
+    renderHistoryList();
+  });
+</script>
+

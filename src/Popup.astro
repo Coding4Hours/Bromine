@@ -1,18 +1,18 @@
 ---
-import "@/styles.css";
-import { Icon } from "astro-icon/components";
+import "@/styles.css"
+import { Icon } from "astro-icon/components"
 
 export interface Props {
   // --- Element IDs ---
-  triggerId: string;
-  popupId: string;
-  contentId: string;
-  closeBtnId: string;
+  triggerId: string
+  popupId: string
+  contentId: string
+  closeBtnId: string
 
   // --- Content ---
-  title: string;
-  triggerAriaLabel: string;
-  triggerIcon: string; // Icon name e.g., 'lucide:settings'
+  title: string
+  triggerAriaLabel: string
+  triggerIcon: string // Icon name e.g., 'lucide:settings'
 }
 
 const {
@@ -23,7 +23,7 @@ const {
   title,
   triggerAriaLabel,
   triggerIcon,
-} = Astro.props;
+} = Astro.props
 ---
 
 <!-- 1. The Trigger Button -->
